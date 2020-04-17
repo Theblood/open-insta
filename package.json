@@ -1,0 +1,29 @@
+{
+  "name": "open-insta",
+  "version": "1.0.0",
+  "description": "An autonomous and complete API provider for Instagram Direct Messages based on reverse engineering",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joaomirandasa/open-insta.git"
+  },
+  "keywords": [
+    "instagram",
+    "instagram-web",
+    "api",
+    "bot",
+    "chatbots",
+    "headless",
+    "rev-eng",
+    "reverse-engineering"
+  ],
+  "author": "João Vitor Miranda Santos",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/joaomirandasa/open-insta/issues"
+  },
+  "homepage": "https://github.com/joaomirandasa/open-insta#readme"
+}
