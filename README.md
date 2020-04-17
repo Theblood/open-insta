@@ -1,4 +1,4 @@
-# openInsta
+# open-insta
 Welcome to best autonomous API for Instagram Direct. This library provide you an alternative solution for Instagram API without any approval process, just setup an use your private API. It's based on reverse engineering of Instagram Web and runs into headless browser behind the scenes.
 
 Special thanks to developers of amazing packages and ideas used here, Pedro Lopez (whatsapp-web.js) and Mohammed Shah (smashah)
