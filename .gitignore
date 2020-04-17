@@ -10,6 +10,7 @@ pids
 *.pid
 *.seed
 *.pid.lock
+*-lock.json
 
 # Model of messages to study
 src/models
