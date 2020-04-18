@@ -4,7 +4,7 @@ const EventEmitter = require('events');
 const puppeteer = require('puppeteer');
 
 const Util = require('./util/Util');
-const { InstagramURL, UserAgent, DefaultOptions, Events } = require('./util/Constants');
+const { InstagramURL, UserAgent, DefaultOptions, Events, Selectors } = require('./util/Constants');
 const igRaid = require('./util/igRaid');
 const { ExposeStore } = require('./util/Injected');
 const Message = require('./structures/Message');
@@ -64,12 +64,12 @@ class Client extends EventEmitter {
 	        * (3) - Click Login Button
 	        * (4) - Wait page navigation load
 	        */
-        	await page.waitForSelector('._2hvTZ.pexuQ.zyHYP[name=username]', { timeout: 6000 });
-		    await page.focus('._2hvTZ.pexuQ.zyHYP[name=username]');
+        	await page.waitForSelector(Selectors.USERNAME, { timeout: 6000 });
+		    await page.focus(Selectors.USERNAME);
 			await page.keyboard.type(this.options.credentials.username);
-			await page.focus('._2hvTZ.pexuQ.zyHYP[name=password]');
+			await page.focus(Selectors.PASSWORD);
 			await page.keyboard.type(this.options.credentials.password);
-			await page.click('.sqdOP.L3NKy.y3zKF[type=submit]');
+			await page.click(Selectors.SUBMIT_LOGIN);
             
             /**
             * bypassing 2Factor autentication using aconecpt of another lib
@@ -77,15 +77,15 @@ class Client extends EventEmitter {
             * Here, this concept as used in addition to eventEmitter
             */
             try {
-                await page.waitForSelector('p.O4QwN', { timeout: 6000 });
-                await page.click('button.yZn4P');
+                await page.waitForSelector(Selectors.PAGE_LOADED, { timeout: 6000 });
+                await page.click(Selectors.BUTTON_BYPASS);
                 this.emit(Events.AUTHENTICATION_2FA);
                 var token2FA = await new Promise((resolve, reject) => {
                     that.on('2fa_answer', resolve);
                 });
-                await page.focus('input[name=security_code]');
+                await page.focus(Selectors.SECURITY_CODE);
                 await page.keyboard.type(token2FA);
-                await page.click('.yZn4P');
+                await page.click(Selectors.SECURITY_CODE_2);
             } catch (error) {
                 console.log("* 2Factor not detected *");
                 return true;
@@ -96,7 +96,7 @@ class Client extends EventEmitter {
             * verify if error message of credentials among other thing is showed
             */
             try {
-                await page.waitForSelector('p#slfErrorAlert', { timeout: 10000 });
+                await page.waitForSelector(Selectors.TROUBLES, { timeout: 10000 });
                 this.emit(Events.AUTHENTICATION_FAILURE, 'Unable to log in. Are the session details valid?');
                 browser.close();
             } catch (error) {
@@ -136,8 +136,8 @@ class Client extends EventEmitter {
                 */
                 // await this._closeNotificationPopUp();
                 try {
-                    await this.pupPage.waitForSelector('.piCib', { timeout: 5000 });
-                    await this.pupPage.click('.aOOlW.HoLwm');
+                    await this.pupPage.waitForSelector(Selectors.NOTIFICATION_APPEAR, { timeout: 5000 });
+                    await this.pupPage.click(Selectors.NOTIFICATION_CLOSE);
                 } catch (error) {
                     return true;
                 }
@@ -149,22 +149,22 @@ class Client extends EventEmitter {
         /**
         * Waiting feed page load properlly guided by selector browser
         */
-        await page.waitForSelector('._2dbep.qNELH', { timeout: 600000 }); 
+        await page.waitForSelector(Selectors.ALREDY_LOADED, { timeout: 600000 }); 
 
         /**
         * (1) - Navigating to inbox page
         * (2) - Wait inbox page load propperly guided by class and secure by timeout in case of something goes wrong
         */
         await page.goto(InstagramURL+'direct/inbox/');
-        await page.waitForSelector('.sqdOP.L3NKy.y3zKF', { timeout: 60000 }); 
+        await page.waitForSelector(Selectors.INBOX, { timeout: 60000 }); 
 
         /**
         * Closing notification popUp if appear
         */
         // await this._closeNotificationPopUp();
         try {
-            await this.pupPage.waitForSelector('.piCib', { timeout: 5000 });
-            await this.pupPage.click('.aOOlW.HoLwm');
+            await this.pupPage.waitForSelector(Selectors.NOTIFICATION_APPEAR, { timeout: 5000 });
+            await this.pupPage.click(Selectors.NOTIFICATION_CLOSE);
         } catch (error) {
             console.log("* popup not detected *");
         }
