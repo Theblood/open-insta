@@ -21,11 +21,30 @@ exports.ExposeStore = (igRaidStr) => {
     */
     window.openInsta = {};
     window.openInsta.observers = Broker.$DirectMQTT5;
+
+    /*
+    * Usefull functions extracted from instagram base code
+    */
     window.openInsta.genToken = function (){
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, x => {
             const n = 16 * Math.random() | 0;
             return ('x' == x ? n : 3 & n | 8).toString(16)
         });
+    };
+    window.openInsta.getLinkRegex = function() {
+        return new RegExp("(?:(?:(?:[a-z]+:)?//)?|www\\.)(?:\\S+(?::\\S*)?@)?(?:localhost|(?:(?:[a-z\\u00a1-\\uffff0-9]-*)*[a-z\\u00a1-\\uffff0-9]+)(?:\\.(?:[a-z\\u00a1-\\uffff0-9]-*)*[a-z\\u00a1-\\uffff0-9]+)*(?:\\.(?:((?:[a-z\\u00a1-\\uffff]{2,}))))\\.?)(?::\\d{2,5})?(?:[/?#][^\\s\"]*)?",'ig');
+    }
+    window.openInsta.createBlob = function(dataURL) {
+        const BASE64_MARKER = ';base64,';
+        const parts = dataURL.split(BASE64_MARKER);
+        const contentType = parts[0].split(':')[1];
+        const raw = window.atob(parts[1]);
+        const rawLength = raw.length;
+        const uInt8Array = new Uint8Array(rawLength);
+        for (let i = 0; i < rawLength; ++i) {
+            uInt8Array[i] = raw.charCodeAt(i);
+        }
+        return new Blob([uInt8Array], { type: contentType });
     };
 
     /*
@@ -37,7 +56,14 @@ exports.ExposeStore = (igRaidStr) => {
     window.openInsta.redux = window.iR.findModule('getStore')[0];
     window.openInsta.thread = window.iR.findModule('ThreadItemType')[0];
     window.openInsta.translator = window.iR.findModule('INBOX_STRING')[0];
-   
+    window.openInsta.senders = window.iR.findModule((module) => typeof module.sendLinkMessage === 'function' && typeof module.sendTextMessage === 'function' )[0];
+    // Discover how to take this modules by another way
+    window.openInsta.magicBox = __r(9699424); 
+    window.openInsta.me = __r(9699336).getViewerId();
+    // [9699424] //MAGIC BOX
+    // __r(9699424).disableTwoFactorAuth().then(data=>console.log(data))
+    // __r(9568331).post('/accounts/phone_confirm_send_sms_code/', {phone_number: "PHONENUMBER"}).then(data=>console.log(data));
+
     /*
     * Prepare api address controller to became easy on updates
     */
@@ -159,19 +185,14 @@ exports.ExposeStore = (igRaidStr) => {
     * @param {object} [options] - Expansion or replace object for futher implementations
     */
     openInsta.sendTextMessage = async (thread_id, text, options = {}) => {
-        var dispatch = {
-            action: 'send_item',
-            mutation_token: openInsta.genToken(),
-            item_type: "text",
-            text: text,
-            thread_id: thread_id,
-            ...options
+        const linkBuilder = text.match(openInsta.getLinkRegex());
+        if(linkBuilder){
+            var dispatch = await openInsta.senders.sendLinkMessage(thread_id,text,linkBuilder,openInsta.genToken());
+            return dispatch;
+        } else {
+            var dispatch = await openInsta.senders.sendTextMessage(thread_id,text);
+            return dispatch;
         }
-        var response = await Broker.$DirectMQTT14(dispatch);
-        return {
-            dispatch: dispatch,
-            sended: response
-        };
     };
 
     /*
@@ -192,6 +213,58 @@ exports.ExposeStore = (igRaidStr) => {
             dispatch: dispatch,
             sended: response
         };
+    };
+
+    /*
+    * Send Link
+    * @param {string} [thread_id] - Identificator of which user you're talking
+    * @param {object} [options] - Expansion or replace object for futher implementations
+    */
+    openInsta.sendLink = async (thread_id, address, text, options = {}) => {
+        var dispatch = await openInsta.senders.sendLinkMessage(thread_id,text,[address],openInsta.genToken())
+        return dispatch;
+    };
+    
+    /*
+    * Send Image
+    * @param {string} [thread_id] - Identificator of which user you're talking
+    * @param {string} [base64Image] - An JPEG image in base64 string
+    * @param {Int} [width] - width of image sended
+    * @param {Int} [height] - height of image sended
+    */     
+    openInsta.sendImage = async (thread_id, base64Image, width, height, options = {}) => {
+        var now = Date.now().toString();
+        openInsta.magicBox.uploadPhoto({
+            entityName: 'direct_'+now,
+            file: openInsta.createBlob(base64Image),
+            uploadId: now,
+            uploadMediaHeight: height,
+            uploadMediaWidth: width
+        }).then((uploadedData) => {
+            openInsta.Direct.configurePhoto(openInsta.genToken(),thread_id,uploadedData['upload_id']);
+        }).then((postSended) => {
+           console.log("Picture sended",postSended);
+        }).catch(err => {
+           console.log("error on send",err);
+        });
+    };
+
+    /*
+    * Get pending inbox 
+    * You half to approval all conversations for start 
+    */
+    openInsta.pendingInbox = async () => {
+        const pendingInbox = await openInsta.Direct.getPendingInbox();
+        return pendingInbox;
+    };
+
+    /*
+    * Get pending inbox 
+    * This return the last time of each user was online on conversations
+    */
+    openInsta.presenceInbox = async () => {
+        const presenceInbox = await openInsta.Direct.getInboxPresence();
+        return presenceInbox;
     };
 
     /*
