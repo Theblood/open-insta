@@ -289,7 +289,7 @@ class Client extends EventEmitter {
     async getInbox() {
         const inbox = await this.pupPage.evaluate(async () => {
             let inboxFetch;
-            inboxFetch = await window.openInsta.getInbox();
+            inboxFetch = await window.openInsta.Direct.getInbox();
             return inboxFetch;
         });
         return inbox;
