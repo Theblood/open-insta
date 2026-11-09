@@ -1,30 +1,35 @@
 'use strict';
 
 exports.InstagramURL = 'https://www.instagram.com/';
-exports.UserAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.109 Safari/537.36';
+
+/**
+ * Values read from the live web client on 2026-11-09.
+ * `X-IG-App-ID` comes from RelayAPIConfigDefaults and `X-ASBD-ID`
+ * from the BDHeaderConfig module. A logged-in session overwrites
+ * them when the page itself makes a request.
+ */
+exports.WebClient = {
+    appId: '936619743392459',
+    asbdId: '359341',
+    igD: 'www'
+};
 
 exports.DefaultOptions = {
     puppeteer: {
-        headless: true, 
+        headless: true,
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-gpu',
-            '--no-default-browser-check',
-            '--disable-infobars',
-            '--disable-web-security',
-            '--no-experiments',
-            '--ignore-gpu-blacklist',
-            '--ignore-certificate-errors',
-            '--ignore-certificate-errors-spki-list',
-            '--disable-extensions'
+            '--disable-blink-features=AutomationControlled',
+            '--lang=es-CL,es,en-US',
+            '--window-size=1280,900'
         ]
     },
-    session: false
+    session: false,
+    pollInterval: 5000,
+    otpTimeout: 600000,
+    credentials: null
 };
 
 /**
@@ -47,20 +52,23 @@ exports.Events = {
 };
 
 /**
- * Selectors used for mapping movements of headless
+ * Selectors observed on the current login page.
+ * The form is rendered in Spanish or English and no longer uses the
+ * 2020 CSS-module class names. `email` / `pass` are the live names;
+ * `username` / `password` remain as a fallback.
  * @readonly
  */
 exports.Selectors = {
-    USERNAME: '._2hvTZ.pexuQ.zyHYP[name=username]',
-    PASSWORD: '._2hvTZ.pexuQ.zyHYP[name=password]',
-    SUBMIT_LOGIN: '.sqdOP.L3NKy.y3zKF[type=submit]',
-    PAGE_LOADED: 'p.O4QwN',
-    BUTTON_BYPASS: 'button.yZn4P',
-    SECURITY_CODE: 'input[name=security_code]',
-    SECURITY_CODE_2: '.yZn4P',
-    TROUBLES: 'p#slfErrorAlert',
-    NOTIFICATION_APPEAR: '.piCib',
-    NOTIFICATION_CLOSE: '.aOOlW.HoLwm',
-    ALREDY_LOADED: '._2dbep.qNELH',
-    INBOX: '.sqdOP.L3NKy.y3zKF'
+    USERNAME: 'input[name="email"], input[name="username"]',
+    PASSWORD: 'input[name="pass"], input[name="password"]',
+    SUBMIT_LOGIN: 'button[type="submit"], input[type="submit"]'
+};
+
+exports.Labels = {
+    LOGIN: '^(iniciar sesi[oó]n|log in)$',
+    DISMISS: '^(ahora no|not now|omitir)$',
+    SAVE: '^(guardar( informaci[oó]n)?|save( info)?)$',
+    TRUST: '^(s[ií],? confiar|confiar( en este dispositivo)?|trust( this device)?|recordar( este)? dispositivo)$',
+    CONFIRM: '^(continuar|continue|confirmar|confirm|enviar|verificar|verify)$',
+    COOKIES: '^(permitir todas( las cookies)?|allow all( cookies)?|aceptar todo)$'
 };

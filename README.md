@@ -13,7 +13,32 @@ Special thanks to developers of amazing packages and ideas used here, Pedro Lope
 | Send typing  | ✅  |
 | Read inbox | ✅ |
 | Get profile info | ✅ |
+| WhatsApp / SMS / app code at login | ✅ |
 
+
+## What changed in 1.1.0
+
+The 2020 CSS selectors and the `window.__r` module walk no longer match the web client. Login is the page itself: it encrypts the password and posts the GraphQL mutation `useCDSWebLoginMutation`. On 9 Nov 2026 that mutation, from a fresh browser, continued to `https://www.instagram.com/auth_platform/codeentry/` and rendered **Revisa tus mensajes de WhatsApp**. The library waits there and submits whatever code you pass to `answerChallenge`.
+
+Requests made by that page used `X-IG-App-ID: 936619743392459` and `X-ASBD-ID: 359341`. Direct calls reuse those headers inside the same browser session. The inbox itself stays on `/api/v1/direct_v2/`. That part could not be re-captured: Instagram stopped the session on the WhatsApp code, before `/direct/inbox/` loaded.
+
+Chrome or Chromium has to be installed. `puppeteer-core` does not download a browser. Set `puppeteer.executablePath` or `PUPPETEER_EXECUTABLE_PATH` when it is not on the default path.
+
+## Run
+
+Put the account in `.env` (this file is gitignored). Quote the password when it contains `$`:
+
+```
+INSTAGRAM_USERNAME=you@example.com
+INSTAGRAM_PASSWORD='your password'
+```
+
+```
+npm install
+node example.js
+```
+
+Chrome opens visibly. If Instagram sends a WhatsApp code, the terminal asks for it. Paste the code and press Enter. The script then accepts **Guardar información** and **Confiar en este dispositivo**. The next run reuses `.session/chrome` and `session.json`, which is how Instagram recognizes the same device and skips the login.
 
 ## Setup Example
 ```node
@@ -38,9 +63,13 @@ if (fs.existsSync(SESSION_FILE_PATH)) {
 * This represent begginig of declaration, you can parse values to puppeter also
 * can avoiding a new loggin sendind previous login data saved on ./session.json
 */
-const client = new Client({ 
-    puppeteer: { headless: false }, 
-    session: sessionCfg 
+const client = new Client({
+    puppeteer: { headless: false },
+    session: sessionCfg,
+    credentials: {
+        username: process.env.INSTAGRAM_USERNAME,
+        password: process.env.INSTAGRAM_PASSWORD
+    }
 });
 
 /* 
@@ -54,9 +83,10 @@ client.initialize();
 * received over SMS or e-mail, over terminal, when you type press ENTER.
 * Method based on: https://github.com/joaomirandasa/headless2FA
 */
-client.on('authentication_2fa', ()=>{
-    rl.question("[2Factor Bypass] - What is the token received over SMS/E-mail? ", (input) => {
-        client.emit('authentication_answer',input);
+client.on('authentication_2fa', (challenge) => {
+    const where = challenge && challenge.channel ? challenge.channel : 'verification';
+    rl.question("[Código " + where + "] Pégalo y presiona ENTER: ", (input) => {
+        client.answerChallenge(input);
     });
 });
 

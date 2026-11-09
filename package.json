@@ -1,10 +1,10 @@
 {
   "name": "open-insta",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "An autonomous and complete API provider for Instagram Direct Messages based on reverse engineering",
   "main": "index.js",
   "scripts": {
-    "test": "test"
+    "test": "node --test"
   },
   "repository": {
     "type": "git",
@@ -26,8 +26,10 @@
     "url": "https://github.com/joaomirandasa/open-insta/issues"
   },
   "homepage": "https://github.com/joaomirandasa/open-insta#readme",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
-    "puppeteer": "^3.0.0",
-    "readline": "^1.3.0"
+    "puppeteer-core": "^24.0.0"
   }
 }
