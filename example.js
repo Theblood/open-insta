@@ -1,12 +1,18 @@
 const fs = require('fs');
+const path = require('path');
 const { Client } = require('./index');
+const { loadEnvFile } = require('./src/util/env');
 const readline = require('readline');
+
+loadEnvFile(path.join(__dirname, '.env'));
+
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
 
-const SESSION_FILE_PATH = './session.json';
+const SESSION_FILE_PATH = path.join(__dirname, 'session.json');
+const PROFILE_DIR = path.join(__dirname, '.session', 'chrome');
 let sessionCfg;
 if (fs.existsSync(SESSION_FILE_PATH)) {
     sessionCfg = require(SESSION_FILE_PATH);
@@ -15,12 +21,17 @@ if (fs.existsSync(SESSION_FILE_PATH)) {
 const username = process.env.INSTAGRAM_USERNAME;
 const password = process.env.INSTAGRAM_PASSWORD;
 if (!sessionCfg && (!username || !password)) {
-    console.error('Define INSTAGRAM_USERNAME y INSTAGRAM_PASSWORD, o deja un session.json de un ingreso anterior.');
+    console.error('Crea un archivo .env con INSTAGRAM_USERNAME e INSTAGRAM_PASSWORD.');
     process.exit(1);
 }
 
+fs.mkdirSync(PROFILE_DIR, { recursive: true });
+
 const client = new Client({
-    puppeteer: { headless: false },
+    puppeteer: {
+        headless: false,
+        userDataDir: PROFILE_DIR
+    },
     session: sessionCfg,
     credentials: username && password ? { username, password } : null
 });
@@ -34,7 +45,8 @@ client.on('authentication_2fa', (challenge) => {
 });
 
 client.on('authenticated', (session) => {
-    console.log('[AUTHENTICATED] cookies:', (session.cookies || []).map((cookie) => cookie.name).join(', '));
+    const names = (session.cookies || []).map((cookie) => cookie.name);
+    console.log('[AUTHENTICATED] cookies:', names.join(', '));
     fs.writeFile(SESSION_FILE_PATH, JSON.stringify(session), function (err) {
         if (err) console.error(err);
     });
@@ -45,7 +57,7 @@ client.on('auth_failure', (inform) => {
 });
 
 client.on('ready', async () => {
-    console.log('[READY]');
+    console.log('[READY] Sesión guardada. La próxima ejecución reutiliza el mismo Chrome.');
     try {
         const inbox = await client.getInbox();
         console.log('[INBOX]', inbox.threads.map((thread) => ({

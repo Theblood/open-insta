@@ -24,6 +24,22 @@ Requests made by that page used `X-IG-App-ID: 936619743392459` and `X-ASBD-ID: 3
 
 Chrome or Chromium has to be installed. `puppeteer-core` does not download a browser. Set `puppeteer.executablePath` or `PUPPETEER_EXECUTABLE_PATH` when it is not on the default path.
 
+## Run
+
+Put the account in `.env` (this file is gitignored). Quote the password when it contains `$`:
+
+```
+INSTAGRAM_USERNAME=you@example.com
+INSTAGRAM_PASSWORD='your password'
+```
+
+```
+npm install
+node example.js
+```
+
+Chrome opens visibly. If Instagram sends a WhatsApp code, the terminal asks for it. Paste the code and press Enter. The script then accepts **Guardar información** and **Confiar en este dispositivo**. The next run reuses `.session/chrome` and `session.json`, which is how Instagram recognizes the same device and skips the login.
+
 ## Setup Example
 ```node
 const fs = require('fs');

@@ -3,8 +3,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const { classifyLoginState } = require('../src/util/loginState');
-const { sessionCookies } = require('../src/util/Session');
+const { sessionCookies, sessionLocalStorage } = require('../src/util/Session');
+const { loadEnvFile } = require('../src/util/env');
 const { textPayload, likePayload, typingPayload, simplifyInbox } = require('../src/util/directPayload');
 const Message = require('../src/Structures/Message');
 const User = require('../src/Structures/User');
@@ -51,6 +55,35 @@ test('a rejected password stays a credential error', () => {
         ]
     });
     assert.equal(state.type, 'bad_credentials');
+});
+
+test('a trust-device screen is not dismissed', () => {
+    const state = classifyLoginState({
+        href: 'https://www.instagram.com/',
+        text: 'Confiar en este dispositivo\nNo volver a pedir el código en este navegador\nConfiar'
+    });
+    assert.equal(state.type, 'trust_device');
+});
+
+test('env values keep a dollar sign and a star', () => {
+    const file = path.join(os.tmpdir(), 'open-insta-env-' + process.pid + '.env');
+    const previous = process.env.INSTAGRAM_PASSWORD;
+    fs.writeFileSync(file, "INSTAGRAM_PASSWORD='$secret*'\n");
+    delete process.env.INSTAGRAM_PASSWORD;
+    loadEnvFile(file);
+    assert.equal(process.env.INSTAGRAM_PASSWORD, '$secret*');
+    if (previous == null) delete process.env.INSTAGRAM_PASSWORD;
+    else process.env.INSTAGRAM_PASSWORD = previous;
+    fs.unlinkSync(file);
+});
+
+test('saved localStorage is restored with the cookies', () => {
+    const stored = sessionLocalStorage({
+        cookies: [],
+        localStorage: { trusted_devices_storage_version: '{"1":{"nonce":"abc"}}' }
+    });
+    assert.equal(JSON.parse(stored.trusted_devices_storage_version)['1'].nonce, 'abc');
+    assert.equal(sessionLocalStorage([{ name: 'sessionid', value: 'x' }]), null);
 });
 
 test('session cookies accept the old object and a bare array', () => {

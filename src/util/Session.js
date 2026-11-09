@@ -27,6 +27,19 @@ function sessionCookies(session) {
         });
 }
 
+/**
+ * localStorage saved next to the cookies. Instagram keeps the trusted
+ * device nonce here under `trusted_devices_storage_version`.
+ * @param {Array|object|false|null} session
+ * @returns {object|null}
+ */
+function sessionLocalStorage(session) {
+    if (!session || Array.isArray(session) || !session.localStorage) return null;
+    if (typeof session.localStorage !== 'object') return null;
+    return session.localStorage;
+}
+
 module.exports = {
-    sessionCookies
+    sessionCookies,
+    sessionLocalStorage
 };

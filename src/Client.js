@@ -6,7 +6,7 @@ const puppeteer = require('puppeteer-core');
 const Util = require('./util/Util');
 const { InstagramURL, WebClient, DefaultOptions, Events, Labels } = require('./util/Constants');
 const { classifyLoginState } = require('./util/loginState');
-const { sessionCookies } = require('./util/Session');
+const { sessionCookies, sessionLocalStorage } = require('./util/Session');
 const { textPayload, likePayload, typingPayload, simplifyInbox } = require('./util/directPayload');
 const { findChrome } = require('./util/browser');
 const { installApi } = require('./util/Injected');
@@ -51,6 +51,7 @@ class Client extends EventEmitter {
         if (cookies.length) {
             await page.setCookie(...cookies);
         }
+        await this._restoreLocalStorage(sessionLocalStorage(this.options.session));
 
         await page.goto(InstagramURL + 'accounts/login/', {
             waitUntil: 'domcontentloaded',
@@ -61,15 +62,12 @@ class Client extends EventEmitter {
         let state = await this._readState();
 
         if (state.type !== 'authenticated') {
-            if (!cookies.length) {
-                await this._login();
-            } else {
+            if (cookies.length) {
                 await this._settle(2000);
                 state = await this._readState();
-                if (state.type === 'login_form' || state.type === 'bad_credentials') {
-                    this.emit(Events.AUTHENTICATION_FAILURE, 'La sesión guardada ya no sirve.');
-                    throw new Error('La sesión guardada ya no sirve.');
-                }
+            }
+            if (state.type !== 'authenticated') {
+                await this._login();
             }
         }
 
@@ -91,6 +89,7 @@ class Client extends EventEmitter {
             wwwClaim: this._webConfig.wwwClaim || '0'
         });
 
+        await this._emitSession();
         this.emit(Events.READY);
         this._watchInbox().catch((error) => {
             this.emit(Events.DISCONNECTED, error.message);
@@ -189,7 +188,20 @@ class Client extends EventEmitter {
                 await this._answerOtp(state);
                 continue;
             }
-            if (state.type === 'save_login' || state.type === 'notifications') {
+            if (state.type === 'trust_device') {
+                await this._checkTrustBox();
+                const trusted = await this._clickLabel(Labels.TRUST) || await this._clickLabel(Labels.SAVE) || await this._clickLabel(Labels.CONFIRM);
+                if (!trusted) await this.pupPage.keyboard.press('Enter');
+                await this._settle(1500);
+                continue;
+            }
+            if (state.type === 'save_login') {
+                const saved = await this._clickLabel(Labels.SAVE);
+                if (!saved) await this._clickLabel(Labels.CONFIRM);
+                await this._settle(1500);
+                continue;
+            }
+            if (state.type === 'notifications') {
                 await this._clickLabel(Labels.DISMISS);
                 await this._settle(1000);
                 continue;
@@ -222,7 +234,9 @@ class Client extends EventEmitter {
             path: state.path
         });
         const code = await pending;
+        await this._checkTrustBox();
         await this._typeCode(code);
+        await this._checkTrustBox();
         const confirmed = await this._clickLabel(Labels.CONFIRM);
         if (!confirmed) await this.pupPage.keyboard.press('Enter');
         await this._settle(3000);
@@ -279,6 +293,38 @@ class Client extends EventEmitter {
         return classifyLoginState(Object.assign({ hasSession }, snapshot));
     }
 
+    async _checkTrustBox() {
+        return this.pupPage.evaluate(() => {
+            const boxes = [...document.querySelectorAll('input[type="checkbox"]')];
+            let checked = false;
+            for (const box of boxes) {
+                const label = [
+                    box.getAttribute('aria-label'),
+                    box.getAttribute('name'),
+                    box.labels && box.labels[0] ? box.labels[0].innerText : ''
+                ].join(' ');
+                const nearby = (box.parentElement && box.parentElement.innerText) || '';
+                if (!/confiar|trust|recordar|dispositivo|device/i.test(label + ' ' + nearby)) continue;
+                if (!box.checked) box.click();
+                checked = true;
+            }
+            return checked;
+        });
+    }
+
+    async _restoreLocalStorage(entries) {
+        if (!entries) return;
+        await this.pupPage.evaluateOnNewDocument((stored) => {
+            try {
+                for (const key of Object.keys(stored)) {
+                    if (localStorage.getItem(key) == null) localStorage.setItem(key, stored[key]);
+                }
+            } catch (error) {
+                /* storage can be blocked on the first empty document */
+            }
+        }, entries);
+    }
+
     async _clickLabel(patternSource) {
         return this.pupPage.evaluate((source) => {
             const pattern = new RegExp(source, 'i');
@@ -329,7 +375,15 @@ class Client extends EventEmitter {
 
     async _emitSession() {
         const cookies = await this.pupPage.cookies();
-        this.emit(Events.AUTHENTICATED, { cookies });
+        const localStorage = await this.pupPage.evaluate(() => {
+            const stored = {};
+            for (let index = 0; index < localStorage.length; index++) {
+                const key = localStorage.key(index);
+                stored[key] = localStorage.getItem(key);
+            }
+            return stored;
+        });
+        this.emit(Events.AUTHENTICATED, { cookies, localStorage });
     }
 
     async _watchInbox() {

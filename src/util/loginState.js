@@ -61,6 +61,10 @@ function classifyLoginState(snapshot = {}) {
         };
     }
 
+    if (/confiar en este dispositivo|trust this device|recordar este dispositivo|dispositivo de confianza|don't ask for (the )?code again|no volver a pedir/.test(normalized)) {
+        return { type: 'trust_device', path };
+    }
+
     if (/guardar (tu |la )?informaci[oó]n de inicio|save your login info|save info/.test(normalized)) {
         return { type: 'save_login', path };
     }

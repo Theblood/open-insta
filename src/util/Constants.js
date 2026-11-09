@@ -28,7 +28,7 @@ exports.DefaultOptions = {
     },
     session: false,
     pollInterval: 5000,
-    otpTimeout: 180000,
+    otpTimeout: 600000,
     credentials: null
 };
 
@@ -67,6 +67,8 @@ exports.Selectors = {
 exports.Labels = {
     LOGIN: '^(iniciar sesi[oó]n|log in)$',
     DISMISS: '^(ahora no|not now|omitir)$',
+    SAVE: '^(guardar( informaci[oó]n)?|save( info)?)$',
+    TRUST: '^(s[ií],? confiar|confiar( en este dispositivo)?|trust( this device)?|recordar( este)? dispositivo)$',
     CONFIRM: '^(continuar|continue|confirmar|confirm|enviar|verificar|verify)$',
     COOKIES: '^(permitir todas( las cookies)?|allow all( cookies)?|aceptar todo)$'
 };
