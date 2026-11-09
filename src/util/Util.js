@@ -20,6 +20,7 @@ class Util {
      */
     static mergeDefault(def, given) {
         if (!given) return def;
+        if (!def || typeof def !== 'object') return given;
         for (const key in def) {
             if (!has(given, key) || given[key] === undefined) {
                 given[key] = def[key];
